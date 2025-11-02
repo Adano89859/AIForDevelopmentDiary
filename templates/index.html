@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Development Diary</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="icon-title">
+                <div class="icon">📝</div>
+                <h1>Development Diary</h1>
+            </div>
+            <p class="subtitle">Cada línea de código merece ser recordada ✨</p>
+
+            <!-- Botón de apagar -->
+            <button id="shutdownBtn" class="shutdown-btn" title="Detener servidor">
+                🔴 Detener Aplicación
+            </button>
+        </div>
+
+        <!-- Main Card -->
+        <div class="card">
+            <div class="card-content">
+                <!-- Primera fila: Autor y Proyecto -->
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>👤 Autor</label>
+                        <input type="text" id="author" placeholder="Tu nombre">
+                    </div>
+                    <div class="input-group">
+                        <label>📁 Proyecto</label>
+                        <input type="text" id="project" list="projectsList" placeholder="Nombre del proyecto">
+                        <datalist id="projectsList"></datalist>
+                    </div>
+                </div>
+
+                <!-- Segunda fila: Rama y Commit -->
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>🌿 Rama</label>
+                        <input type="text" id="branch" list="branchesList" placeholder="feature/nueva-funcionalidad">
+                        <datalist id="branchesList"></datalist>
+                    </div>
+                    <div class="input-group">
+                        <label>💡 Commit/Problema</label>
+                        <input type="text" id="commit" placeholder="Fix: Error en validación">
+                    </div>
+                </div>
+
+                <!-- Área de notas -->
+                <div class="notes-section">
+                    <div class="notes-header">
+                        <label>📅 Notas de desarrollo</label>
+                        <button id="recordBtn" class="record-btn">
+                            🎤 Grabar
+                        </button>
+                    </div>
+                    <textarea
+                        id="notes"
+                        placeholder="Describe lo que has hecho hoy... La IA lo convertirá en un resumen profesional ✨"
+                        rows="10"
+                    ></textarea>
+                </div>
+
+                <!-- Barra de acciones -->
+                <div class="separator"></div>
+                <div class="action-bar">
+                    <label class="ai-toggle">
+                        <input type="checkbox" id="aiEnabled" checked>
+                        <span>✨ Mejorar con IA</span>
+                    </label>
+                    <button id="saveBtn" class="save-btn">
+                        💾 Guardar Entrada
+                    </button>
+                </div>
+
+                <!-- Mensaje de éxito (oculto) -->
+                <div id="successMessage" class="success-message hidden">
+                    🎉 Tu progreso ha sido documentado. ¡Cada paso cuenta!
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            💡 Documentar no es perder tiempo, es invertir en tu futuro yo
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
