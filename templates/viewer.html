@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor - Development Diary</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/viewer.css') }}">
+    <!-- Marked.js para renderizar Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container-viewer">
+        <!-- Header -->
+        <div class="header">
+            <div class="icon-title">
+                <div class="icon">📖</div>
+                <h1>Historial de Entradas</h1>
+            </div>
+            <p class="subtitle">Revive tu viaje de desarrollo</p>
+
+            <div class="header-actions">
+                <a href="/" class="btn-back">⬅️ Volver</a>
+                <button id="shutdownBtn" class="shutdown-btn">🔴 Detener</button>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>📁 Proyecto:</label>
+                <select id="projectFilter">
+                    <option value="">Todos los proyectos</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>🔍 Buscar:</label>
+                <input type="text" id="searchInput" placeholder="Buscar en títulos...">
+            </div>
+        </div>
+
+        <!-- Grid de entradas -->
+        <div class="entries-grid" id="entriesGrid">
+            <!-- Las entradas se cargarán aquí -->
+        </div>
+
+        <!-- Modal para ver entrada completa -->
+        <div id="entryModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle"></h2>
+                    <button class="modal-close" id="closeModal">✕</button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Contenido renderizado aquí -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/viewer.js') }}"></script>
+</body>
+</html>

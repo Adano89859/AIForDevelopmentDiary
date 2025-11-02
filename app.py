@@ -110,9 +110,14 @@ def save_entry():
         project_path = BASE_PATH / project / "entries"
         project_path.mkdir(parents=True, exist_ok=True)
 
-        # Generar nombre de archivo
+        # Generar nombre de archivo con timestamp y rama
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"{timestamp}.md"
+
+        # Limpiar nombre de rama para el archivo (sin caracteres especiales)
+        branch_clean = branch.replace('/', '-').replace('\\', '-').replace(' ', '_') if branch else 'sin-rama'
+
+        # Formato: FECHA_HORA_rama-nombre.md
+        filename = f"{timestamp}_{branch_clean}.md"
         filepath = project_path / filename
 
         # Generar contenido Markdown
@@ -260,6 +265,116 @@ def shutdown():
     print("🛑 Deteniendo servidor...")
     os.kill(os.getpid(), signal.SIGINT)
     return jsonify({'success': True, 'message': 'Servidor detenido'})
+
+
+@app.route('/api/entries', methods=['GET'])
+def get_entries():
+    """
+    Obtiene todas las entradas del diario
+    Opcionalmente filtrar por proyecto
+    """
+    try:
+        project_filter = request.args.get('project', None)
+        entries = []
+
+        # Determinar qué proyectos buscar
+        if project_filter:
+            projects_to_scan = [project_filter]
+        else:
+            projects_to_scan = [p.name for p in BASE_PATH.iterdir() if p.is_dir()]
+
+        # Escanear entradas
+        for project_name in projects_to_scan:
+            entries_path = BASE_PATH / project_name / "entries"
+
+            if not entries_path.exists():
+                continue
+
+            for md_file in sorted(entries_path.glob("*.md"), reverse=True):
+                # Leer archivo
+                with open(md_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # Parsear frontmatter
+                entry_data = parse_frontmatter(content)
+                entry_data['filename'] = md_file.name
+                entry_data['project'] = project_name
+                entry_data['content'] = content
+
+                entries.append(entry_data)
+
+        # Ordenar por fecha (más reciente primero)
+        entries.sort(key=lambda x: x.get('fecha', ''), reverse=True)
+
+        return jsonify({
+            'success': True,
+            'entries': entries,
+            'total': len(entries)
+        })
+
+    except Exception as e:
+        print(f"❌ Error obteniendo entradas: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+def parse_frontmatter(content):
+    """Extrae datos del frontmatter YAML"""
+    data = {}
+
+    if content.startswith('---'):
+        parts = content.split('---', 2)
+        if len(parts) >= 2:
+            frontmatter = parts[1].strip()
+
+            for line in frontmatter.split('\n'):
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    data[key.strip()] = value.strip()
+
+    return data
+
+@app.route('/viewer')
+def viewer():
+    """Página del visor de entradas"""
+    return render_template('viewer.html')
+
+
+@app.route('/api/entry/<project>/<filename>', methods=['GET'])
+def get_entry_content(project, filename):
+    """Obtiene el contenido completo de una entrada específica"""
+    try:
+        filepath = BASE_PATH / project / "entries" / filename
+
+        if not filepath.exists():
+            return jsonify({
+                'success': False,
+                'message': 'Entrada no encontrada'
+            }), 404
+
+        with open(filepath, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Extraer solo el contenido después del frontmatter
+        parts = content.split('---', 2)
+        if len(parts) >= 3:
+            body = parts[2].strip()
+        else:
+            body = content
+
+        return jsonify({
+            'success': True,
+            'content': body,
+            'raw': content
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
 if __name__ == '__main__':
     print("🚀 Iniciando Development Diary...")
