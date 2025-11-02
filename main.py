@@ -1,16 +1,18 @@
-# This is a sample Python script.
+"""
+Development Diary - Aplicación de diario de desarrollo
+Punto de entrada principal
+"""
 
-# Press Mayús+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+import tkinter as tk
+from ui.main_window import MainWindow
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+def main():
+    """Inicializa y ejecuta la aplicación"""
+    root = tk.Tk()
+    app = MainWindow(root)
+    root.mainloop()
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+if __name__ == "__main__":
+    main()

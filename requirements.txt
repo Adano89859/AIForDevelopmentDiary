@@ -1,0 +1,15 @@
+# IA y Procesamiento
+requests>=2.31.0
+ollama>=0.1.0
+
+# Reconocimiento de voz
+vosk>=0.3.45
+sounddevice>=0.4.6
+numpy>=1.24.0
+
+# UI (si necesitas extras para Tkinter)
+pillow>=10.0.0
+
+# Utilidades del sistema (de tu código existente)
+psutil>=5.9.0
+pyaudio>=0.2.13
