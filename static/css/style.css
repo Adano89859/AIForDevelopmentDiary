@@ -308,11 +308,39 @@ textarea::placeholder {
     }
 }
 
-/* Botón de apagar */
-.shutdown-btn {
+/* Header actions container */
+.header-actions {
     position: absolute;
     top: 20px;
     right: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Botón ver entradas */
+.btn-viewer {
+    background: rgba(168, 85, 247, 0.2);
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    border-radius: 10px;
+    color: #c084fc;
+    padding: 8px 16px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.btn-viewer:hover {
+    background: rgba(168, 85, 247, 0.3);
+    border-color: #a855f7;
+    color: #e9d5ff;
+}
+
+/* Botón de apagar */
+.shutdown-btn {
     background: rgba(239, 68, 68, 0.2);
     border: 1px solid rgba(239, 68, 68, 0.5);
     border-radius: 10px;
@@ -330,7 +358,8 @@ textarea::placeholder {
     color: #fee2e2;
 }
 
-/* Ajustar header para el botón */
+/* Ajustar header para los botones */
 .header {
     position: relative;
+    padding-top: 10px;
 }
