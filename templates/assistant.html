@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente IA - Development Diary</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant-page.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container-assistant">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div class="icon-title">
+                    <div class="icon">🤖</div>
+                    <h1>Asistente IA</h1>
+                </div>
+                <p class="subtitle">Pregunta sobre tu historial de desarrollo</p>
+            </div>
+
+            <div class="header-actions">
+                <a href="/" class="btn-back">📝 Nueva Entrada</a>
+                <a href="/viewer" class="btn-back">📖 Ver Historial</a>
+                <button id="shutdownBtn" class="shutdown-btn">🔴 Detener</button>
+            </div>
+        </div>
+
+        <!-- Contenedor principal -->
+        <div class="assistant-container">
+            <!-- Panel izquierdo: Chat -->
+            <div class="chat-panel">
+                <div class="chat-modes">
+                    <button class="mode-btn active" data-mode="search" title="Buscar problemas similares">
+                        🔍 Buscar Similar
+                    </button>
+                    <button class="mode-btn" data-mode="suggest" title="Sugerir soluciones">
+                        💡 Sugerir Solución
+                    </button>
+                    <button class="mode-btn" data-mode="files" title="Archivos relacionados">
+                        📂 Archivos
+                    </button>
+                    <button class="mode-btn" data-mode="analyze" title="Analizar patrones">
+                        📊 Analizar
+                    </button>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message assistant">
+                        <div class="message-content">
+                            <h3>👋 ¡Hola! Soy tu Asistente IA</h3>
+                            <p>Puedo ayudarte con:</p>
+                            <ul>
+                                <li><strong>🔍 Buscar Similar:</strong> "¿He tenido este error antes?"</li>
+                                <li><strong>💡 Sugerir Solución:</strong> "¿Cómo puedo resolver X?"</li>
+                                <li><strong>📂 Archivos:</strong> "¿Qué archivos debo revisar?"</li>
+                                <li><strong>📊 Analizar:</strong> "¿Qué errores cometo más?"</li>
+                            </ul>
+                            <p><small>Haz una pregunta sobre tu código 😊</small></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="project-selector">
+                        <label>📁 Contexto:</label>
+                        <select id="projectContext">
+                            <option value="">Todos los proyectos</option>
+                        </select>
+                    </div>
+
+                    <div class="input-wrapper">
+                        <textarea
+                            id="questionInput"
+                            placeholder="Escribe tu pregunta aquí..."
+                            rows="3"
+                        ></textarea>
+                        <button id="sendQuestion" class="send-btn">
+                            📤 Enviar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel derecho: Referencias -->
+            <div class="references-panel">
+                <div class="panel-header">
+                    <h3>📚 Archivos Referenciados</h3>
+                    <span id="referencesCount" class="count-badge">0</span>
+                </div>
+
+                <div id="referencesContent" class="references-content">
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>Haz una pregunta para ver archivos relacionados</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/assistant-page.js') }}"></script>
+</body>
+</html>

@@ -7,6 +7,10 @@
     padding: 20px;
 }
 
+.container-viewer .header {
+    margin-bottom: 30px;
+}
+
 .header-actions {
     position: absolute;
     top: 20px;
