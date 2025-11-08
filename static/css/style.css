@@ -15,8 +15,7 @@ body {
 }
 
 .container {
-    width: 100%;
-    max-width: 950px;
+    width: 90%;
     animation: fadeIn 0.5s ease-out;
 }
 
@@ -316,6 +315,7 @@ textarea::placeholder {
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 /* Botón ver entradas */
@@ -358,8 +358,163 @@ textarea::placeholder {
     color: #fee2e2;
 }
 
-/* Ajustar header para los botones */
+/* ========== HEADER UNIFICADO ========== */
+
 .header {
     position: relative;
-    padding-top: 10px;
+    text-align: center;
+    padding: 20px 20px 10px 20px;
+    margin-bottom: 20px;
+}
+
+.header-content {
+    position: relative;
+    z-index: 1;
+}
+
+.icon-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #c084fc, #ec4899);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: 0 10px 25px rgba(192, 132, 252, 0.5);
+    flex-shrink: 0;
+}
+
+h1 {
+    color: white;
+    font-size: 36px;
+    font-weight: bold;
+    letter-spacing: -0.5px;
+    margin: 0;
+}
+
+.subtitle {
+    color: #e9d5ff;
+    font-size: 18px;
+    margin: 5px 0 0 0;
+}
+
+/* Botones del header - siempre arriba a la derecha */
+.header-actions {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    z-index: 10;
+    flex-wrap: nowrap;
+}
+
+/* Estilo común para botones de navegación */
+.btn-viewer,
+.btn-back {
+    background: rgba(168, 85, 247, 0.2);
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    border-radius: 10px;
+    color: #e9d5ff;  /* Más claro para mejor contraste */
+    padding: 8px 14px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.btn-viewer:hover,
+.btn-back:hover {
+    background: rgba(168, 85, 247, 0.4);
+    border-color: #a855f7;
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+/* Botón de detener */
+.shutdown-btn {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    border-radius: 10px;
+    color: #fca5a5;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.shutdown-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+    color: #fee2e2;
+    transform: translateY(-2px);
+}
+
+/* Responsive - apilar botones en móviles */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 24px;
+    }
+
+    .subtitle {
+        font-size: 14px;
+    }
+
+    .header-actions {
+        position: static;
+        justify-content: center;
+        margin-top: 15px;
+        flex-wrap: wrap;
+    }
+
+    .btn-viewer,
+    .btn-back,
+    .shutdown-btn {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+}
+
+/* Modal mejorado para mejor contraste */
+.modal {
+    background: rgba(0, 0, 0, 0.9);  /* Más oscuro */
+}
+
+.modal-content {
+    background: #1e293b;  /* Fondo más oscuro */
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+}
+
+.modal-body {
+    background: #0f172a;  /* Fondo oscuro para el contenido */
+    color: #f1f5f9;  /* Texto más claro */
+}
+
+.modal-body h1,
+.modal-body h2,
+.modal-body h3,
+.modal-body h4,
+.modal-body strong {
+    color: #ffffff;  /* Títulos blancos puros */
+}
+
+.modal-body p,
+.modal-body li,
+.modal-body span {
+    color: #e2e8f0;  /* Texto gris muy claro */
 }
