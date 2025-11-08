@@ -10,6 +10,10 @@ from pathlib import Path
 import requests
 import os
 import signal
+import json
+import wave
+import tempfile
+from vosk import Model, KaldiRecognizer
 
 app = Flask(__name__)
 CORS(app)
@@ -19,6 +23,7 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "llama3.1:8b"
 BASE_PATH = Path("Development Diary")
 BASE_PATH.mkdir(exist_ok=True)
+VOSK_MODEL = None
 
 
 @app.route('/')
@@ -736,6 +741,127 @@ def generate_assistant_response(question, context, mode):
         print(f"❌ Error generando respuesta: {e}")
         return f"❌ Error: {str(e)}"
 
+
+def load_vosk_model():
+    """Carga el modelo de Vosk una sola vez"""
+    global VOSK_MODEL
+
+    if VOSK_MODEL is None:
+        model_path = "vosk-model-small-es-0.42"
+
+        if not os.path.exists(model_path):
+            print(f"⚠️ Modelo de Vosk no encontrado en: {model_path}")
+            print("💡 Descarga desde: https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip")
+            return None
+
+        try:
+            print(f"📂 Cargando modelo de Vosk desde: {model_path}")
+            VOSK_MODEL = Model(model_path)
+            print("✅ Modelo de Vosk cargado correctamente")
+        except Exception as e:
+            print(f"❌ Error cargando modelo de Vosk: {e}")
+            return None
+
+    return VOSK_MODEL
+
+
+@app.route('/api/transcribe', methods=['POST'])
+def transcribe_audio():
+    """
+    Transcribe audio usando Vosk
+    Recibe: archivo de audio en formato WAV
+    Devuelve: texto transcrito
+    """
+    try:
+        # Verificar que hay un archivo
+        if 'audio' not in request.files:
+            return jsonify({
+                'success': False,
+                'message': 'No se recibió archivo de audio'
+            }), 400
+
+        audio_file = request.files['audio']
+
+        # Cargar modelo de Vosk
+        model = load_vosk_model()
+        if model is None:
+            return jsonify({
+                'success': False,
+                'message': 'Modelo de Vosk no disponible'
+            }), 500
+
+        # Guardar audio temporalmente
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
+            audio_file.save(temp_audio.name)
+            temp_audio_path = temp_audio.name
+
+        try:
+            # Abrir archivo de audio
+            wf = wave.open(temp_audio_path, "rb")
+
+            # Verificar formato
+            if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getframerate() not in [8000, 16000, 32000, 48000]:
+                return jsonify({
+                    'success': False,
+                    'message': 'Formato de audio no soportado. Usa WAV mono, 16-bit, 16kHz'
+                }), 400
+
+            # Crear reconocedor
+            rec = KaldiRecognizer(model, wf.getframerate())
+            rec.SetWords(True)
+
+            # Procesar audio
+            transcription_parts = []
+
+            while True:
+                data = wf.readframes(4000)
+                if len(data) == 0:
+                    break
+
+                if rec.AcceptWaveform(data):
+                    result = json.loads(rec.Result())
+                    text = result.get('text', '')
+                    if text:
+                        transcription_parts.append(text)
+
+            # Resultado final
+            final_result = json.loads(rec.FinalResult())
+            final_text = final_result.get('text', '')
+            if final_text:
+                transcription_parts.append(final_text)
+
+            # Unir todo el texto
+            full_transcription = ' '.join(transcription_parts).strip()
+
+            # Limpiar archivo temporal
+            wf.close()
+            os.unlink(temp_audio_path)
+
+            if full_transcription:
+                print(f"✅ Transcripción exitosa: {full_transcription[:50]}...")
+                return jsonify({
+                    'success': True,
+                    'transcription': full_transcription
+                })
+            else:
+                return jsonify({
+                    'success': True,
+                    'transcription': '',
+                    'message': 'No se detectó voz en el audio'
+                })
+
+        except Exception as e:
+            # Limpiar en caso de error
+            if os.path.exists(temp_audio_path):
+                os.unlink(temp_audio_path)
+            raise e
+
+    except Exception as e:
+        print(f"❌ Error en transcripción: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error al transcribir: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     print("🚀 Iniciando Development Diary...")
