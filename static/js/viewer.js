@@ -75,40 +75,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Mostrar entradas
     function displayEntries(entries) {
-        if (entries.length === 0) {
-            entriesGrid.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; color: #d8b4fe; padding: 40px;">
-                    <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
-                    <p style="font-size: 18px;">No hay entradas todavía</p>
-                    <p style="font-size: 14px; opacity: 0.7;">Empieza a documentar tu desarrollo</p>
-                </div>
-            `;
-            return;
-        }
-
-        entriesGrid.innerHTML = entries.map(entry => {
-            const title = entry.commit_problema || 'Sin título';
-            const author = entry.autor || 'Anónimo';
-            const branch = entry.rama || 'sin-rama';
-            const date = formatDate(entry.fecha);
-            const preview = extractPreview(entry.content);
-
-            return `
-                <div class="entry-card" onclick="openEntry('${entry.project}', '${entry.filename}')">
-                    <div class="entry-header">
-                        <div class="entry-title">${escapeHtml(title)}</div>
-                        <div class="entry-meta">
-                            <span class="meta-tag">📁 ${escapeHtml(entry.project)}</span>
-                            <span class="meta-tag">🌿 ${escapeHtml(branch)}</span>
-                            <span class="meta-tag">👤 ${escapeHtml(author)}</span>
-                        </div>
-                        <div class="entry-date">📅 ${date}</div>
-                    </div>
-                    <div class="entry-preview">${escapeHtml(preview)}</div>
-                </div>
-            `;
-        }).join('');
+    if (entries.length === 0) {
+        entriesGrid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; color: #d8b4fe; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
+                <p style="font-size: 18px;">No hay entradas todavía</p>
+                <p style="font-size: 14px; opacity: 0.7;">Empieza a documentar tu desarrollo</p>
+            </div>
+        `;
+        return;
     }
+
+    entriesGrid.innerHTML = entries.map(entry => {
+        const title = entry.commit_problema || 'Sin título';
+        const author = entry.autor || 'Anónimo';
+        const branch = entry.rama || 'sin-rama';
+        const date = formatDate(entry.fecha);
+        const preview = extractPreview(entry.content);
+
+        return `
+            <div class="entry-card">
+                <div class="entry-header" onclick="openEntry('${entry.project}', '${entry.filename}')">
+                    <div class="entry-title">${escapeHtml(title)}</div>
+                    <div class="entry-meta">
+                        <span class="meta-tag">📁 ${escapeHtml(entry.project)}</span>
+                        <span class="meta-tag">🌿 ${escapeHtml(branch)}</span>
+                        <span class="meta-tag">👤 ${escapeHtml(author)}</span>
+                    </div>
+                    <div class="entry-date">📅 ${date}</div>
+                </div>
+                <div class="entry-preview" onclick="openEntry('${entry.project}', '${entry.filename}')">${escapeHtml(preview)}</div>
+
+                <!-- Botones de exportación -->
+                <div class="entry-actions">
+                    <button onclick="exportEntryPDF(event, '${entry.project}', '${entry.filename}')" class="export-btn" title="Exportar a PDF">
+                        📄 PDF
+                    </button>
+                    <button onclick="exportBranchPDF(event, '${entry.project}', '${escapeHtml(branch)}')" class="export-btn export-btn-branch" title="Exportar toda la rama">
+                        📚 Rama completa
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
 
     // Filtrar entradas
     function filterEntries() {
@@ -182,4 +192,97 @@ document.addEventListener('DOMContentLoaded', function() {
         div.textContent = text;
         return div.innerHTML;
     }
+
+    // Exportar entrada individual a PDF
+window.exportEntryPDF = async function(event, project, filename) {
+    event.stopPropagation(); // Evitar abrir el modal
+
+    try {
+        const url = `/api/export_entry_pdf/${encodeURIComponent(project)}/${encodeURIComponent(filename)}`;
+
+        // Mostrar indicador
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '⏳ Generando...';
+        btn.disabled = true;
+
+        // Descargar PDF
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error('Error al generar PDF');
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename.replace('.md', '.pdf');
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+
+        // Restaurar botón
+        btn.textContent = '✅ Descargado';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }, 2000);
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al generar PDF: ' + error.message);
+        event.target.textContent = '📄 PDF';
+        event.target.disabled = false;
+    }
+};
+
+// Exportar rama completa a PDF
+window.exportBranchPDF = async function(event, project, branch) {
+    event.stopPropagation();
+
+    if (!confirm(`¿Exportar todas las entradas de la rama "${branch}" a PDF?`)) {
+        return;
+    }
+
+    try {
+        const url = `/api/export_branch_pdf/${encodeURIComponent(project)}/${encodeURIComponent(branch)}`;
+
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '⏳ Generando...';
+        btn.disabled = true;
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.message || 'Error al generar PDF');
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `${project}_${branch}_completo.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+
+        btn.textContent = '✅ Descargado';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }, 2000);
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al generar PDF: ' + error.message);
+        event.target.textContent = '📚 Rama completa';
+        event.target.disabled = false;
+    }
+};
+
 });
