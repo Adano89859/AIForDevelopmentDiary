@@ -58,7 +58,8 @@ if %errorLevel% neq 0 (
 echo [✓] Modelo llama3.1:8b listo
 
 echo.
-echo [4/6] Instalando dependencias de Python...
+echo.
+echo [4/7] Instalando dependencias de Python...
 pip install -r requirements.txt
 if %errorLevel% neq 0 (
     echo [!] Error instalando dependencias
@@ -68,12 +69,25 @@ if %errorLevel% neq 0 (
 echo [✓] Dependencias instaladas
 
 echo.
-echo [5/6] Creando carpeta de datos...
+echo [5/7] Verificando modelo de voz Vosk (opcional)...
+if exist "vosk-model-es-0.42" (
+    echo [✓] Modelo grande de Vosk encontrado
+) else if exist "vosk-model-small-es-0.42" (
+    echo [✓] Modelo pequeño de Vosk encontrado
+) else (
+    echo [i] Modelo de Vosk no encontrado (opcional)
+    echo [i] La aplicación usará Google Speech (online) por defecto
+    echo [i] Para modo offline, descarga:
+    echo     https://alphacephei.com/vosk/models/vosk-model-es-0.42.zip
+)
+
+echo.
+echo [6/7] Creando carpeta de datos...
 if not exist "Development Diary" mkdir "Development Diary"
 echo [✓] Carpeta creada
 
 echo.
-echo [6/6] Creando acceso directo...
+echo [7/7] Creando acceso directo...
 set SCRIPT_DIR=%~dp0
 set TARGET=%SCRIPT_DIR%DevelopmentDiary.exe
 set SHORTCUT=%USERPROFILE%\Desktop\Development Diary.lnk

@@ -76,6 +76,19 @@ if [ $? -ne 0 ]; then
 fi
 echo -e "${GREEN}[✓]${NC} Dependencias instaladas"
 
+# 5.5. Verificar modelo de voz
+echo -e "\n${YELLOW}[5.5/6]${NC} Verificando modelo de voz Vosk (opcional)..."
+if [ -d "vosk-model-es-0.42" ]; then
+    echo -e "${GREEN}[✓]${NC} Modelo grande de Vosk encontrado"
+elif [ -d "vosk-model-small-es-0.42" ]; then
+    echo -e "${GREEN}[✓]${NC} Modelo pequeño de Vosk encontrado"
+else
+    echo -e "${YELLOW}[i]${NC} Modelo de Vosk no encontrado (opcional)"
+    echo "    La aplicación usará Google Speech (online) por defecto"
+    echo "    Para modo offline, descarga desde:"
+    echo "    https://alphacephei.com/vosk/models/vosk-model-es-0.42.zip"
+fi
+
 # 6. Crear carpeta de datos
 echo -e "\n${YELLOW}[6/6]${NC} Creando carpeta de datos..."
 mkdir -p "Development Diary"
