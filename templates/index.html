@@ -57,9 +57,19 @@
                 <div class="notes-section">
                     <div class="notes-header">
                         <label>📅 Notas de desarrollo</label>
-                        <button id="recordBtn" class="record-btn">
-                            🎤 Grabar
-                        </button>
+
+                        <div class="voice-controls">
+                            <!-- Selector de método de voz -->
+                            <select id="voiceMethod" class="voice-method-selector">
+                                <option value="vosk">🔒 Offline (Vosk)</option>
+                                <option value="google" selected>🌐 Online (Google)</option>
+                            </select>
+
+                            <!-- Botón de grabar -->
+                            <button id="recordBtn" class="record-btn">
+                                🎤 Grabar
+                            </button>
+                        </div>
                     </div>
                     <textarea
                         id="notes"

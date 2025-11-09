@@ -167,54 +167,65 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    async function startRecording() {
-        try {
-            // Solicitar permiso para el micrófono
-            audioStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,  // Mono
-                    sampleRate: 16000, // 16kHz
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            });
-
-            // Crear MediaRecorder
-            const options = { mimeType: 'audio/webm' };
-            mediaRecorder = new MediaRecorder(audioStream, options);
-
-            audioChunks = [];
-
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    audioChunks.push(event.data);
-                }
-            };
-
-            mediaRecorder.onstop = async () => {
-                await processRecording();
-            };
-
-            // Iniciar grabación
-            mediaRecorder.start();
-            isRecording = true;
-
-            // Actualizar UI
-            recordBtn.textContent = '🔴 Grabando...';
-            recordBtn.classList.add('recording');
-
-            console.log('🎤 Grabación iniciada');
-
-        } catch (error) {
-            console.error('❌ Error al acceder al micrófono:', error);
-
-            if (error.name === 'NotAllowedError') {
-                alert('⚠️ Permiso de micrófono denegado.\nPor favor, permite el acceso al micrófono en la configuración del navegador.');
-            } else {
-                alert('❌ Error al acceder al micrófono: ' + error.message);
+ async function startRecording() {
+    try {
+        // Solicitar permiso con configuración óptima para Vosk
+        audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                channelCount: 1,           // Mono (requerido por Vosk)
+                sampleRate: 48000,         // Alta calidad, se convertirá a 16kHz
+                echoCancellation: true,    // Cancelar eco
+                noiseSuppression: true,    // Reducir ruido de fondo
+                autoGainControl: true,     // Normalizar volumen automáticamente
+                latency: 0                 // Baja latencia
             }
+        });
+
+        // Crear MediaRecorder con mejor calidad
+        let options = { mimeType: 'audio/webm;codecs=opus' };
+
+        // Fallback si el navegador no soporta opus
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options = { mimeType: 'audio/webm' };
+        }
+
+        mediaRecorder = new MediaRecorder(audioStream, options);
+
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            await processRecording();
+        };
+
+        // Iniciar grabación (capturar en chunks pequeños para mejor calidad)
+        mediaRecorder.start(100);
+        isRecording = true;
+
+        // Actualizar UI
+        recordBtn.textContent = '🔴 Grabando...';
+        recordBtn.classList.add('recording');
+
+        console.log('🎤 Grabación iniciada (modo alta precisión)');
+        console.log('💡 Habla claro y cerca del micrófono para mejor resultado');
+
+    } catch (error) {
+        console.error('❌ Error al acceder al micrófono:', error);
+
+        if (error.name === 'NotAllowedError') {
+            alert('⚠️ Permiso de micrófono denegado.\n\nPor favor, permite el acceso al micrófono en la configuración del navegador.');
+        } else if (error.name === 'NotFoundError') {
+            alert('⚠️ No se encontró ningún micrófono.\n\nConecta un micrófono y vuelve a intentarlo.');
+        } else {
+            alert('❌ Error al acceder al micrófono:\n' + error.message);
         }
     }
+}
 
     async function stopRecording() {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -236,59 +247,75 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function processRecording() {
-        try {
-            // Crear blob de audio
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+    try {
+        // Crear blob de audio
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
 
-            // Convertir webm a wav usando Web Audio API
-            const arrayBuffer = await audioBlob.arrayBuffer();
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        // Convertir webm a wav usando Web Audio API
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-            // Convertir a WAV mono 16kHz
-            const wavBlob = await audioBufferToWav(audioBuffer);
+        // Convertir a WAV mono 16kHz
+        const wavBlob = await audioBufferToWav(audioBuffer);
 
-            // Enviar al servidor para transcripción
-            const formData = new FormData();
-            formData.append('audio', wavBlob, 'recording.wav');
+        // Obtener método seleccionado
+        const voiceMethod = document.getElementById('voiceMethod').value;
 
-            console.log('📤 Enviando audio al servidor...');
+        // Determinar endpoint según método
+        const endpoint = voiceMethod === 'google' ? '/api/transcribe_google' : '/api/transcribe';
 
-            const response = await fetch('/api/transcribe', {
-                method: 'POST',
-                body: formData
-            });
+        // Enviar al servidor para transcripción
+        const formData = new FormData();
+        formData.append('audio', wavBlob, 'recording.wav');
 
-            const result = await response.json();
+        console.log(`📤 Enviando audio al servidor (método: ${voiceMethod})...`);
 
-            if (result.success) {
-                const transcription = result.transcription;
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        });
 
-                if (transcription) {
-                    // Añadir transcripción al textarea
-                    const notesTextarea = document.getElementById('notes');
-                    const currentText = notesTextarea.value;
+        const result = await response.json();
 
-                    if (currentText.trim()) {
-                        notesTextarea.value = currentText + '\n\n' + transcription;
-                    } else {
-                        notesTextarea.value = transcription;
-                    }
+        if (result.success) {
+            const transcription = result.transcription;
 
-                    console.log('✅ Transcripción completada:', transcription);
+            if (transcription) {
+                // Añadir transcripción al textarea
+                const notesTextarea = document.getElementById('notes');
+                const currentText = notesTextarea.value;
 
-                    // Mostrar notificación visual
-                    showTranscriptionSuccess(transcription);
+                if (currentText.trim()) {
+                    notesTextarea.value = currentText + '\n\n' + transcription;
                 } else {
-                    alert('⚠️ No se detectó voz en la grabación');
+                    notesTextarea.value = transcription;
                 }
+
+                console.log(`✅ Transcripción completada (${result.method}):`, transcription);
+
+                // Mostrar notificación visual con método usado
+                showTranscriptionSuccess(transcription, result.method);
             } else {
-                throw new Error(result.message || 'Error al transcribir');
+                alert('⚠️ No se detectó voz en la grabación.\n\nConsejos:\n- Habla más cerca del micrófono\n- Habla más alto y claro\n- Reduce el ruido de fondo');
             }
+        } else {
+            throw new Error(result.message || 'Error al transcribir');
+        }
 
         } catch (error) {
             console.error('❌ Error procesando audio:', error);
-            alert('❌ Error al transcribir el audio: ' + error.message);
+
+            // Mensaje más específico según el error
+            let errorMsg = '❌ Error al transcribir el audio';
+
+            if (error.message.includes('internet') || error.message.includes('Google')) {
+                errorMsg += '\n\n🌐 Problema de conexión a internet.\nPrueba con el modo Offline (Vosk).';
+            } else {
+                errorMsg += ':\n' + error.message;
+            }
+
+            alert(errorMsg);
         } finally {
             // Restaurar botón
             recordBtn.textContent = '🎤 Grabar';
@@ -384,36 +411,49 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function showTranscriptionSuccess(text) {
-        // Crear notificación temporal
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
-            z-index: 10000;
-            max-width: 400px;
-            animation: slideIn 0.3s ease-out;
-        `;
+    function showTranscriptionSuccess(text, method) {
+    // Crear notificación temporal
+    const notification = document.createElement('div');
 
-        notification.innerHTML = `
-            <div style="font-weight: bold; margin-bottom: 8px;">✅ Transcripción completada</div>
-            <div style="font-size: 14px; opacity: 0.9;">${text.substring(0, 80)}${text.length > 80 ? '...' : ''}</div>
-        `;
+    // Color según método
+    const bgGradient = method === 'google'
+        ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)'  // Azul para Google
+        : 'linear-gradient(135deg, #22c55e, #16a34a)'; // Verde para Vosk
 
-        document.body.appendChild(notification);
+    const methodLabel = method === 'google'
+        ? '🌐 Google Speech'
+        : '🔒 Vosk Offline';
 
-        // Eliminar después de 3 segundos
-        setTimeout(() => {
-            notification.style.animation = 'slideOut 0.3s ease-out';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    }
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${bgGradient};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+        z-index: 10000;
+        max-width: 400px;
+        animation: slideIn 0.3s ease-out;
+    `;
+
+    notification.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-weight: bold;">✅ Transcripción completada</span>
+            <span style="font-size: 11px; opacity: 0.8;">${methodLabel}</span>
+        </div>
+        <div style="font-size: 14px; opacity: 0.9;">${text.substring(0, 100)}${text.length > 100 ? '...' : ''}</div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Eliminar después de 4 segundos
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+}
 
     // Añadir animaciones CSS
     const style = document.createElement('style');
