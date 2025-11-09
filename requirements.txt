@@ -12,6 +12,10 @@ numpy>=1.24.0
 SpeechRecognition>=3.10.0
 pydub>=0.25.1
 
+# Generación de PDFs
+reportlab>=4.0.0
+markdown2>=2.4.0
+
 # Utilidades del sistema
 psutil>=5.9.0
 
