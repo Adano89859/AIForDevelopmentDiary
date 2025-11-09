@@ -17,6 +17,8 @@ from vosk import Model, KaldiRecognizer
 import speech_recognition as sr
 from pydub import AudioSegment
 import io
+from diary.pdf_generator import PDFGenerator
+import tempfile
 
 app = Flask(__name__)
 CORS(app)
@@ -1004,6 +1006,122 @@ def transcribe_google():
         return jsonify({
             'success': False,
             'message': f'Error al transcribir: {str(e)}'
+        }), 500
+
+
+@app.route('/api/export_entry_pdf/<project>/<filename>', methods=['GET'])
+def export_entry_pdf(project, filename):
+    """Exporta una entrada individual a PDF"""
+    try:
+        filepath = BASE_PATH / project / "entries" / filename
+
+        if not filepath.exists():
+            return jsonify({
+                'success': False,
+                'message': 'Entrada no encontrada'
+            }), 404
+
+        # Leer entrada
+        with open(filepath, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Parsear datos
+        entry_data = parse_frontmatter(content)
+        entry_data['content'] = content
+
+        # Generar PDF
+        pdf_gen = PDFGenerator()
+
+        # Crear PDF temporal
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_pdf:
+            pdf_path = temp_pdf.name
+
+        pdf_gen.generate_single_entry_pdf(entry_data, pdf_path)
+
+        # Nombre del archivo PDF
+        pdf_filename = filename.replace('.md', '.pdf')
+
+        # Enviar archivo
+        from flask import send_file
+        return send_file(
+            pdf_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=pdf_filename
+        )
+
+    except Exception as e:
+        print(f"❌ Error generando PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error generando PDF: {str(e)}'
+        }), 500
+
+
+@app.route('/api/export_branch_pdf/<project>/<branch>', methods=['GET'])
+def export_branch_pdf(project, branch):
+    """Exporta todas las entradas de una rama a PDF"""
+    try:
+        project_path = BASE_PATH / project / "entries"
+
+        if not project_path.exists():
+            return jsonify({
+                'success': False,
+                'message': 'Proyecto no encontrado'
+            }), 404
+
+        # Buscar entradas de la rama
+        entries = []
+
+        for md_file in sorted(project_path.glob("*.md")):
+            with open(md_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            entry_data = parse_frontmatter(content)
+
+            # Filtrar por rama
+            if entry_data.get('rama', '').lower() == branch.lower():
+                entry_data['content'] = content
+                entry_data['filename'] = md_file.name
+                entries.append(entry_data)
+
+        if not entries:
+            return jsonify({
+                'success': False,
+                'message': f'No hay entradas para la rama "{branch}"'
+            }), 404
+
+        # Ordenar por fecha
+        entries.sort(key=lambda x: x.get('fecha', ''))
+
+        # Generar PDF
+        pdf_gen = PDFGenerator()
+
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_pdf:
+            pdf_path = temp_pdf.name
+
+        pdf_gen.generate_branch_pdf(entries, branch, project, pdf_path)
+
+        # Nombre del archivo
+        pdf_filename = f"{project}_{branch}_completo.pdf".replace('/', '-')
+
+        from flask import send_file
+        return send_file(
+            pdf_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=pdf_filename
+        )
+
+    except Exception as e:
+        print(f"❌ Error generando PDF de rama: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error generando PDF: {str(e)}'
         }), 500
 
 if __name__ == '__main__':

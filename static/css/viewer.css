@@ -329,3 +329,47 @@
         max-height: 90vh;
     }
 }
+
+/* Botones de exportación */
+.entry-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.export-btn {
+    flex: 1;
+    background: rgba(168, 85, 247, 0.2);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 8px;
+    color: #c084fc;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.export-btn:hover:not(:disabled) {
+    background: rgba(168, 85, 247, 0.3);
+    border-color: #a855f7;
+    transform: translateY(-2px);
+}
+
+.export-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.export-btn-branch {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #86efac;
+}
+
+.export-btn-branch:hover:not(:disabled) {
+    background: rgba(34, 197, 94, 0.3);
+    border-color: #22c55e;
+}
