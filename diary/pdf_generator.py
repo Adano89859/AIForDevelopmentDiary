@@ -25,47 +25,53 @@ class PDFGenerator:
     def setup_custom_styles(self):
         """Configura estilos personalizados"""
         # Título principal
-        self.styles.add(ParagraphStyle(
-            name='CustomTitle',
-            parent=self.styles['Heading1'],
-            fontSize=24,
-            textColor=colors.HexColor('#6b21a8'),
-            spaceAfter=30,
-            alignment=TA_CENTER,
-            fontName='Helvetica-Bold'
-        ))
+        if 'CustomTitle' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='CustomTitle',
+                parent=self.styles['Heading1'],
+                fontSize=24,
+                textColor=colors.HexColor('#6b21a8'),
+                spaceAfter=30,
+                alignment=TA_CENTER,
+                fontName='Helvetica-Bold'
+            ))
 
         # Subtítulo
-        self.styles.add(ParagraphStyle(
-            name='CustomHeading2',
-            parent=self.styles['Heading2'],
-            fontSize=16,
-            textColor=colors.HexColor('#9333ea'),
-            spaceAfter=12,
-            spaceBefore=12,
-            fontName='Helvetica-Bold'
-        ))
+        if 'CustomHeading2' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='CustomHeading2',
+                parent=self.styles['Heading2'],
+                fontSize=16,
+                textColor=colors.HexColor('#9333ea'),
+                spaceAfter=12,
+                spaceBefore=12,
+                fontName='Helvetica-Bold'
+            ))
 
         # Texto normal mejorado
-        self.styles.add(ParagraphStyle(
-            name='CustomBody',
-            parent=self.styles['BodyText'],
-            fontSize=11,
-            leading=16,
-            spaceAfter=8,
-            fontName='Helvetica'
-        ))
+        if 'CustomBody' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='CustomBody',
+                parent=self.styles['BodyText'],
+                fontSize=11,
+                leading=16,
+                spaceAfter=8,
+                fontName='Helvetica'
+            ))
 
-        # Código
-        self.styles.add(ParagraphStyle(
-            name='Code',
-            parent=self.styles['Code'],
-            fontSize=9,
-            textColor=colors.HexColor('#1e293b'),
-            backColor=colors.HexColor('#f1f5f9'),
-            borderPadding=10,
-            fontName='Courier'
-        ))
+        # Código (renombrado para evitar conflicto)
+        if 'CustomCode' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='CustomCode',
+                parent=self.styles['BodyText'],
+                fontSize=9,
+                textColor=colors.HexColor('#1e293b'),
+                backColor=colors.HexColor('#f1f5f9'),
+                borderPadding=10,
+                fontName='Courier',
+                leftIndent=10,
+                rightIndent=10
+            ))
 
     def generate_single_entry_pdf(self, entry_data, output_path):
         """
@@ -262,7 +268,7 @@ class PDFGenerator:
                     code_text = '\n'.join(code_lines)
                     flowables.append(Paragraph(
                         f"<font face='Courier' size='9'>{code_text}</font>",
-                        self.styles['Code']
+                        self.styles['CustomCode']
                     ))
                     flowables.append(Spacer(1, 0.1 * inch))
                     code_lines = []
