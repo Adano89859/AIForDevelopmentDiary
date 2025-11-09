@@ -10,6 +10,13 @@ from pathlib import Path
 import requests
 import os
 import signal
+import json
+import wave
+import tempfile
+from vosk import Model, KaldiRecognizer
+import speech_recognition as sr
+from pydub import AudioSegment
+import io
 
 app = Flask(__name__)
 CORS(app)
@@ -19,6 +26,7 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "llama3.1:8b"
 BASE_PATH = Path("Development Diary")
 BASE_PATH.mkdir(exist_ok=True)
+VOSK_MODEL = None
 
 
 @app.route('/')
@@ -736,6 +744,267 @@ def generate_assistant_response(question, context, mode):
         print(f"❌ Error generando respuesta: {e}")
         return f"❌ Error: {str(e)}"
 
+
+def load_vosk_model():
+    """Carga el modelo de Vosk una sola vez (prioriza modelo grande)"""
+    global VOSK_MODEL
+
+    if VOSK_MODEL is None:
+        # Priorizar modelo grande (mejor precisión), fallback a pequeño
+        model_paths = [
+            ("vosk-model-es-0.42", "Grande (1.4GB) - Alta precisión"),
+            ("vosk-model-small-es-0.42", "Pequeño (50MB) - Precisión básica")
+        ]
+
+        model_path = None
+        model_name = None
+
+        for path, name in model_paths:
+            if os.path.exists(path):
+                model_path = path
+                model_name = name
+                break
+
+        if model_path is None:
+            print("=" * 60)
+            print("⚠️  MODELO DE VOSK NO ENCONTRADO")
+            print("=" * 60)
+            print("\n💡 Descarga uno de estos modelos:")
+            print("\n   Recomendado (mejor precisión):")
+            print("   → https://alphacephei.com/vosk/models/vosk-model-es-0.42.zip")
+            print("   → Descomprime en la raíz del proyecto")
+            print("\n   Alternativa (más rápido):")
+            print("   → https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip")
+            print("=" * 60)
+            return None
+
+        try:
+            print("=" * 60)
+            print(f"📂 Cargando modelo de Vosk...")
+            print(f"   Modelo: {model_name}")
+            print(f"   Ruta: {model_path}")
+            print("   ⏳ Esto puede tardar unos segundos...")
+
+            VOSK_MODEL = Model(model_path)
+
+            print(f"✅ Modelo cargado exitosamente: {model_name}")
+            print("=" * 60)
+
+        except Exception as e:
+            print(f"❌ Error cargando modelo de Vosk: {e}")
+            print("💡 Verifica que la carpeta del modelo esté completa")
+            return None
+
+    return VOSK_MODEL
+
+
+@app.route('/api/transcribe', methods=['POST'])
+def transcribe_audio():
+    """
+    Transcribe audio usando Vosk con optimizaciones para mejor precisión
+    """
+    try:
+        if 'audio' not in request.files:
+            return jsonify({
+                'success': False,
+                'message': 'No se recibió archivo de audio'
+            }), 400
+
+        audio_file = request.files['audio']
+
+        # Cargar modelo de Vosk
+        model = load_vosk_model()
+        if model is None:
+            return jsonify({
+                'success': False,
+                'message': 'Modelo de Vosk no disponible. Descarga el modelo desde la documentación.'
+            }), 500
+
+        # Guardar audio temporalmente
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
+            audio_file.save(temp_audio.name)
+            temp_audio_path = temp_audio.name
+
+        try:
+            # Abrir archivo de audio
+            wf = wave.open(temp_audio_path, "rb")
+
+            sample_rate = wf.getframerate()
+
+            print(f"🎤 Procesando audio:")
+            print(f"   - Sample Rate: {sample_rate} Hz")
+            print(f"   - Canales: {wf.getnchannels()}")
+            print(f"   - Duración: {wf.getnframes() / sample_rate:.1f}s")
+
+            # Crear reconocedor con configuración mejorada
+            rec = KaldiRecognizer(model, sample_rate)
+            rec.SetWords(True)  # Incluir info de palabras
+            rec.SetPartialWords(True)  # Mejor reconocimiento parcial
+
+            # Procesar audio en chunks
+            transcription_parts = []
+            chunk_size = 8000  # Chunks más grandes = mejor contexto
+
+            print("   ⏳ Transcribiendo...")
+
+            while True:
+                data = wf.readframes(chunk_size)
+                if len(data) == 0:
+                    break
+
+                if rec.AcceptWaveform(data):
+                    result = json.loads(rec.Result())
+                    text = result.get('text', '').strip()
+
+                    if text:
+                        # Capitalizar primera letra de cada frase
+                        text = text[0].upper() + text[1:] if text else text
+                        transcription_parts.append(text)
+                        print(f"   📝 Fragmento: {text[:50]}...")
+
+            # Procesar resultado final
+            final_result = json.loads(rec.FinalResult())
+            final_text = final_result.get('text', '').strip()
+
+            if final_text:
+                final_text = final_text[0].upper() + final_text[1:] if final_text else final_text
+                transcription_parts.append(final_text)
+                print(f"   📝 Final: {final_text[:50]}...")
+
+            # Unir frases con puntuación
+            if transcription_parts:
+                full_transcription = '. '.join(transcription_parts)
+                # Asegurar punto final
+                if not full_transcription.endswith('.'):
+                    full_transcription += '.'
+            else:
+                full_transcription = ''
+
+            # Limpiar archivo temporal
+            wf.close()
+            os.unlink(temp_audio_path)
+
+            if full_transcription:
+                print(f"✅ Transcripción completada ({len(full_transcription)} caracteres)")
+                return jsonify({
+                    'success': True,
+                    'transcription': full_transcription,
+                    'method': 'vosk'
+                })
+            else:
+                print("⚠️ No se detectó voz en el audio")
+                return jsonify({
+                    'success': True,
+                    'transcription': '',
+                    'message': 'No se detectó voz clara en la grabación'
+                })
+
+        except Exception as e:
+            # Limpiar en caso de error
+            if os.path.exists(temp_audio_path):
+                os.unlink(temp_audio_path)
+            raise e
+
+    except Exception as e:
+        print(f"❌ Error en transcripción: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error al transcribir: {str(e)}'
+        }), 500
+
+
+@app.route('/api/transcribe_google', methods=['POST'])
+def transcribe_google():
+    """
+    Transcribe audio usando Google Speech API (online)
+    Mejor precisión y vocabulario actualizado
+    """
+    try:
+        if 'audio' not in request.files:
+            return jsonify({
+                'success': False,
+                'message': 'No se recibió archivo de audio'
+            }), 400
+
+        audio_file = request.files['audio']
+
+        print("🌐 Transcribiendo con Google Speech API...")
+
+        # Guardar audio temporalmente
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
+            audio_file.save(temp_audio.name)
+            temp_audio_path = temp_audio.name
+
+        try:
+            # Usar SpeechRecognition
+            recognizer = sr.Recognizer()
+
+            # Ajustar para ruido ambiental (mejora precisión)
+            recognizer.energy_threshold = 4000
+            recognizer.dynamic_energy_threshold = True
+
+            with sr.AudioFile(temp_audio_path) as source:
+                # Ajustar según ruido ambiental
+                recognizer.adjust_for_ambient_noise(source, duration=0.5)
+
+                # Grabar audio
+                audio_data = recognizer.record(source)
+
+                print("   ⏳ Enviando a Google Cloud Speech...")
+
+                # Transcribir con Google (español de España)
+                text = recognizer.recognize_google(
+                    audio_data,
+                    language='es-ES',
+                    show_all=False  # Solo mejor resultado
+                )
+
+                # Capitalizar primera letra
+                text = text.strip()
+                if text:
+                    text = text[0].upper() + text[1:]
+                    # Añadir punto final si no tiene
+                    if not text.endswith(('.', '!', '?')):
+                        text += '.'
+
+                print(f"✅ Google transcripción: {text[:80]}...")
+
+                return jsonify({
+                    'success': True,
+                    'transcription': text,
+                    'method': 'google'
+                })
+
+        finally:
+            # Limpiar archivo temporal
+            if os.path.exists(temp_audio_path):
+                os.unlink(temp_audio_path)
+
+    except sr.UnknownValueError:
+        print("⚠️ Google no pudo entender el audio")
+        return jsonify({
+            'success': True,
+            'transcription': '',
+            'message': 'No se detectó voz clara en la grabación'
+        })
+
+    except sr.RequestError as e:
+        print(f"❌ Error de Google API: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error de conexión con Google: {str(e)}. Verifica tu conexión a internet.'
+        }), 500
+
+    except Exception as e:
+        print(f"❌ Error en transcripción Google: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error al transcribir: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     print("🚀 Iniciando Development Diary...")
