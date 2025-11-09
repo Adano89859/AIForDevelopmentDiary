@@ -5,10 +5,12 @@ flask-cors>=4.0.0
 # IA y Procesamiento
 requests>=2.31.0
 
-# Reconocimiento de voz (opcional para futuro)
+# Reconocimiento de voz
 vosk>=0.3.45
 sounddevice>=0.4.6
 numpy>=1.24.0
+SpeechRecognition>=3.10.0
+pydub>=0.25.1
 
 # Utilidades del sistema
 psutil>=5.9.0
